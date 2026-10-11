@@ -40,7 +40,7 @@ const program = new Command();
 program
     .name('nirium')
     .description('Nirium protocol development tool')
-    .version('1.1.4');
+    .version('2.0.0');
 
 // --- COMMAND: create bot ---
 program
