@@ -88,7 +88,8 @@ network call happens.
 ## Spin up a local x402 test server
 
 ```bash
-nirium serve --pay-to G... --api-key <facilitator-key>
+FACILITATOR_API_KEY=<facilitator-key> nirium serve --pay-to G...
+# or just `nirium serve --pay-to G...` in a terminal: it asks for the key with a hidden prompt
 ```
 
 A one-command x402 server for testing `nirium pay` (or any x402 client)
@@ -99,14 +100,16 @@ as `create x402`: get a free key at
 | Option | Values | Default |
 |---|---|---|
 | `-P, --pay-to <address>` | Stellar `G...` address that receives payments | required |
-| `-k, --api-key <key>` | facilitator API key | required |
 | `-p, --price <price>` | e.g. `$0.02` | `$0.02` |
 | `-port, --port <port>` | | `3000` |
 | `-r, --route <route>` | path to protect | `/api/v1/data` |
 | `-n, --network <network>` | `stellar:testnet` or `stellar:pubnet` | `stellar:testnet` |
 
-`--pay-to` and `--api-key` can also come from `nirium config set` instead
-of being passed every time.
+There is no `--api-key` flag: a key passed as a command-line argument sits in
+your shell history and in `ps`. The facilitator key comes from
+`FACILITATOR_API_KEY`, from `nirium config set facilitatorApiKey` (hidden
+prompt), or from a hidden prompt when `serve` runs in a terminal. `--pay-to`
+can also come from `nirium config set payTo`.
 
 ## Check an agent
 
@@ -190,7 +193,8 @@ or the signature doesn't verify.
 ## Manage stored credentials
 
 ```bash
-nirium config set secretKey S...
+nirium config set secretKey        # hidden prompt; or pipe it: ... | nirium config set secretKey
+nirium config set facilitatorApiKey  # same: never as an argument
 nirium config list
 nirium config get payTo
 nirium config delete facilitatorApiKey
