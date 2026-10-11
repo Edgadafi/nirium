@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // ═══════════════════════════════════════════════════════════════
-// Nirium — Autonomous Agent CLI (v1.1.4)
+// Nirium — Autonomous Agent CLI (v2.0.0)
 // ═══════════════════════════════════════════════════════════════
 //
 // Everything below is one flat file on purpose, not a build artifact:
@@ -40,7 +40,7 @@ const program = new Command();
 program
     .name('nirium')
     .description('Nirium protocol development tool')
-    .version('1.1.4');
+    .version('2.0.0');
 
 // --- COMMAND: create bot ---
 program
