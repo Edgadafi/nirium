@@ -2,11 +2,13 @@
 
 All notable changes to the `nirium` package are documented here.
 
-## Unreleased
+## 0.16.1 - 2026-10-11
+
+Documentation and package metadata only. `dist/` is identical to 0.16.0.
 
 ### Changed
 
-- `package.json` `repository` now points to `nirium-protocol/nirium` with `directory: packages/sdk`, and `bugs.url` to `nirium-protocol/nirium/issues` (both pointed to the old `nirium-sdk` repo). Same for `nirium-mcp`.
+- `package.json` `repository` now points to `nirium-protocol/nirium` with `directory: packages/sdk`, and `bugs.url` to `nirium-protocol/nirium/issues` (both pointed to the old `nirium-sdk` repo). `nirium-mcp` gets the same change in its own next release.
 - README: documents the `x402Serve()` replay and rate-limit guard (`guard`, `X402GuardStore`, `createUpstashX402GuardStore`) with a tested example, credit to Edgadafi, and rewrites the "known limitation" text: without `guard` there is still no replay protection or rate limit. Documents `ResilientSignalClient`.
 - README: `/premium/signals` exists only on testnet (mainnet answers 501). Removed two dead links (`/docs/api`, `/docs/mcp`), fixed the GitHub link, removed long dashes.
 
