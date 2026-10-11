@@ -10,7 +10,7 @@
 // dist/ is added to that list too. Inlining avoids depending on a build
 // step existing at publish time at all.
 
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -175,7 +175,9 @@ program
     .option('-port, --port <port>', 'Port number to listen on', '3000')
     .option('-n, --network <network>', 'CAIP-2 network ID (stellar:testnet or stellar:pubnet)', 'stellar:testnet')
     .option('-r, --route <route>', 'Route path to protect', '/api/v1/data')
-    .option('-k, --api-key <key>', 'Facilitator API key')
+    // Kept only to refuse it with a clear message: commander's own
+    // "unknown option" would not tell the user the key is now exposed.
+    .addOption(new Option('-k, --api-key <key>').hideHelp())
     .option('-c, --config <path>', 'Custom path to config file')
     .action(async (options) => {
         await executeServeCommand(options);
@@ -189,7 +191,7 @@ program
     .argument('[key]', 'Configuration key name')
     .argument('[value]', 'Value to set for the configuration key')
     .action(async (action, key, value) => {
-        executeConfigCommand(action, key, value);
+        await executeConfigCommand(action, key, value);
     });
 
 // Un servidor que COBRA, no uno que escucha. Es el camino corto de
@@ -423,7 +425,29 @@ function promptHiddenSecret(question) {
     });
 }
 
-function executeConfigCommand(action, key, value) {
+// Credentials that `config set` never takes as an argument.
+const SECRET_CONFIG_KEYS = {
+    secretKey: {
+        prompt: 'Stellar secret key (S...): ',
+        valid: (v) => StrKey.isValidEd25519SecretSeed(v),
+        invalid: 'not a valid Stellar secret key (expected S...).',
+    },
+    facilitatorApiKey: {
+        prompt: 'Facilitator API key: ',
+        valid: (v) => typeof v === 'string' && v.length > 0,
+        invalid: 'the facilitator API key is empty.',
+    },
+};
+
+// Hidden prompt on a terminal, stdin otherwise. Never a process argument.
+async function readSecretInput(question) {
+    if (process.stdin.isTTY) return promptHiddenSecret(question);
+    const chunks = [];
+    for await (const chunk of process.stdin) chunks.push(chunk);
+    return Buffer.concat(chunks).toString('utf8').trim();
+}
+
+async function executeConfigCommand(action, key, value) {
     const currentConfig = loadConfig();
 
     if (!action || action === 'list') {
@@ -449,9 +473,32 @@ function executeConfigCommand(action, key, value) {
         return;
     }
 
+    const secretSpec = action === 'set' ? SECRET_CONFIG_KEYS[key] : undefined;
+    if (secretSpec) {
+        // Same reason `pay` has no --secret: an argument ends up in the shell
+        // history file and in `ps` output. Refuse it instead of storing it.
+        if (value !== undefined) {
+            console.error(`❌ Error: \`nirium config set ${key}\` does not take the value as an argument.\n`
+                + 'A credential typed on the command line stays in your shell history and is visible in `ps` '
+                + 'to other users on this machine, so it was NOT saved. Treat the value you typed as exposed.\n'
+                + `Run \`nirium config set ${key}\` with no value to get a hidden prompt, `
+                + 'or pipe it on stdin from a file or secret manager.');
+            process.exit(1);
+        }
+        const secret = await readSecretInput(secretSpec.prompt);
+        if (!secretSpec.valid(secret)) {
+            console.error(`❌ Error: ${secretSpec.invalid} Nothing was saved.`);
+            process.exit(1);
+        }
+        saveConfig({ ...currentConfig, [key]: secret });
+        console.log(`✅ Configuration updated: ${key} set successfully.`);
+        return;
+    }
+
     if (action === 'set') {
         if (!key || value === undefined) {
-            console.error('❌ Error: Usage: `nirium config set <key> <value>` (e.g., `nirium config set secretKey S...`)');
+            console.error('❌ Error: Usage: `nirium config set <key> <value>` (e.g., `nirium config set payTo G...`). '
+                + 'For secretKey or facilitatorApiKey, run `nirium config set <key>` with no value.');
             process.exit(1);
         }
         const updatedConfig = { ...currentConfig, [key]: value };
@@ -503,7 +550,6 @@ async function executePayCommand(url, options) {
         const errorMsg = 'Missing secret key for x402 payment authorization.\n'
             + 'Provide a secret key using:\n'
             + '  - `NIRIUM_SECRET_KEY` environment variable\n'
-            + '  - `nirium config set secretKey S...`\n'
             + '  - the interactive prompt (run without --json, in a real terminal)\n'
             + 'There is no --secret flag: a key passed as a command-line argument '
             + 'would sit in your shell history and in `ps` output for anyone else '
@@ -624,13 +670,21 @@ async function executeServeCommand(options) {
     const port = Number(options.port || process.env.PORT || 3000);
     const network = options.network || process.env.NIRIUM_NETWORK || config.network || 'stellar:testnet';
     const routePath = options.route || '/api/v1/data';
-    const facilitatorApiKey = options.apiKey || process.env.FACILITATOR_API_KEY || config.facilitatorApiKey;
+    if (options.apiKey !== undefined) {
+        console.error('❌ Error: `nirium serve` no longer takes --api-key.\n'
+            + 'A key passed as a command-line argument stays in your shell history and is visible in `ps` '
+            + 'to other users on this machine, so it was NOT used. Treat the key you typed as exposed.\n'
+            + 'Set FACILITATOR_API_KEY, or run `nirium serve` in a terminal to get a hidden prompt.');
+        process.exit(1);
+    }
+    let facilitatorApiKey = process.env.FACILITATOR_API_KEY || config.facilitatorApiKey;
+    if (!facilitatorApiKey) facilitatorApiKey = await readSecretInput('Facilitator API key: ');
 
     if (!facilitatorApiKey) {
         console.error('❌ Error: Missing facilitator API key.');
         console.error('Get a free key at https://channels.openzeppelin.com/testnet/gen (testnet)');
-        console.error('or https://channels.openzeppelin.com/gen (mainnet), then pass it via');
-        console.error('--api-key, FACILITATOR_API_KEY, or `nirium config set facilitatorApiKey ...`');
+        console.error('or https://channels.openzeppelin.com/gen (mainnet), then set FACILITATOR_API_KEY');
+        console.error('or run `nirium serve` in a terminal to get a hidden prompt.');
         process.exit(1);
     }
     if (!payTo) {
