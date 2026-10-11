@@ -7,10 +7,11 @@
   "homepage": "https://nirium.xyz",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nirium-protocol/nirium-sdk.git"
+    "url": "git+https://github.com/nirium-protocol/nirium.git",
+    "directory": "packages/sdk"
   },
   "bugs": {
-    "url": "https://github.com/nirium-protocol/nirium-sdk/issues",
+    "url": "https://github.com/nirium-protocol/nirium/issues",
     "email": "niriumprotocol@gmail.com"
   },
   "author": {
