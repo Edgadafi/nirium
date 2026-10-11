@@ -1,6 +1,6 @@
 # nirium-cli
 
-Scaffold Stellar agent projects — including one that charges for itself.
+Scaffold Stellar agent projects, including one that charges for itself.
 
 ```bash
 npm install -g nirium-cli
@@ -37,14 +37,15 @@ The generated server is about ten lines, because `x402Serve()` from the
 [`nirium`](https://www.npmjs.com/package/nirium) SDK carries the facilitator
 client, the scheme registration and the route shape.
 
-**Usage telemetry (disclosed, not hidden):** once running, `x402Serve()`
-sends Nirium a small, non-blocking usage ping — a SHA-256 hash of your
-`X402_FACILITATOR_API_KEY` (never the key itself), your `STELLAR_PAY_TO`
-address, network, route/request counts, and the SDK version, timestamped
-server-side. It never blocks, delays, or fails a charge if the ping fails.
-This is the only way Nirium knows whether a scaffolded server like this one
-is actually running in production — it doesn't authorize or gate anything.
-Set `NIRIUM_X402SERVE_TELEMETRY=false` in the generated `.env` to opt out.
+**Usage telemetry (off by default):** `x402Serve()` sends Nirium nothing
+unless you turn it on. If you set `NIRIUM_X402SERVE_TELEMETRY=true` in the
+generated `.env`, it sends a small usage ping when the server starts and
+again every 50 requests or 10 minutes: your `STELLAR_PAY_TO` address, the
+network, the number of routes or requests, the SDK version, and a short hash
+of your `X402_FACILITATOR_API_KEY` (the first 16 characters of its SHA-256,
+never the key itself). The ping never blocks, delays or fails a charge, and
+it does not authorize or gate anything. Leave the variable unset and nothing
+is sent. (Checked against the code of `nirium` 0.16.0.)
 
 ## Listen to protocol signals
 
@@ -64,15 +65,18 @@ NIRIUM_SECRET_KEY=S... nirium pay https://your-api.example.com/premium/signals
 ```
 
 Signs and settles a real x402 payment against any endpoint that returns a
-402, then prints the response. No scaffolding involved — this hits a live
+402, then prints the response. No scaffolding involved. This hits a live
 server directly, useful for testing a `nirium serve` instance or someone
 else's paid API without writing a client.
 
 There is no `--secret` flag: a key passed as a command-line argument sits
 in your shell history and in `ps`'s full command line for anyone else on
-the machine to read. Set `NIRIUM_SECRET_KEY`, run `nirium config set
-secretKey S...` once, or leave it unset — a real terminal prompts for it
-without echoing what you type.
+the machine to read. There are three safe ways to give
+it the key: set `NIRIUM_SECRET_KEY`; run `nirium config set secretKey` with
+no value (a terminal asks for the key without showing it, or you can pipe
+it in through stdin) to save it once; or leave it unset and a terminal
+prompts for it each time. `nirium config set secretKey S...` with the key
+on the command line is refused and nothing is saved.
 
 | Option | Purpose |
 |---|---|
@@ -80,7 +84,7 @@ without echoing what you type.
 | `-a, --amount <amount>` | Override the price the server advertises |
 | `--json` | Machine-readable result: status, duration, payer, tx hash, response body |
 
-The secret key never leaves your machine except as a signature — the CLI
+The secret key never leaves your machine except as a signature: the CLI
 signs locally and sends the signed payment, not the key itself. Missing a
 secret key fails immediately with the three ways to supply one, before any
 network call happens.
@@ -114,10 +118,19 @@ can also come from `nirium config set payTo`.
 ## Check an agent
 
 ```bash
-nirium status
+nirium status --url https://nirium-agent.fly.dev
 ```
 
-## Diagnose your x402/MPP setup
+Calls the `/health` endpoint of an agent and prints whether it is running
+and for how long. It also prints a version and a network line, but they only
+carry a value when the agent reports one: the Nirium testnet agent's
+`/health` returns just `status`, `service` and `uptime` today, so those two
+lines show `undefined`. `--url` points to the agent you want to check; `https://nirium-agent.fly.dev` is the Nirium testnet agent.
+Without `--url` it looks for an agent on your own machine at
+`http://localhost:3001`, so it reports "unreachable" if you are not running
+one.
+
+## Diagnose your x402 setup
 
 ```bash
 nirium doctor --network testnet
@@ -125,11 +138,12 @@ nirium doctor --network testnet
 
 Five checks against your actual environment before you find out the hard
 way in production: `payTo` is a well-formed public key (not a secret key
-pasted in the wrong field — a real mistake this catches), the facilitator
+pasted in the wrong field, a real mistake this catches), the facilitator
 API key authenticates against `channels.openzeppelin.com`, the Soroban RPC
 endpoint for your target network is reachable, `STELLAR_SECRET_KEY` (if
 set) is validly formatted, and MPP config (if set) is internally
-consistent. Reads from `.env` in the current directory by default.
+consistent. The MPP check only validates the values in your config; Nirium
+does not charge MPP payments on mainnet today. Reads from `.env` in the current directory by default.
 
 | Option | Purpose |
 |---|---|
@@ -175,17 +189,17 @@ nirium verify <cid>
 ```
 
 Independently re-checks a Nirium audit document anchored to IPFS: fetches
-it from a gateway, recomputes its SHA-256 content hash, and — if the
-document carries an agent attestation — verifies the ed25519 signature
+it from a gateway, recomputes its SHA-256 content hash, and, if the
+document carries an agent attestation, verifies the ed25519 signature
 over `nirium-audit-v1:<content_sha256>` against the declared signer's
 Stellar public key. Nothing here trusts the document's own claims about
 itself; both the hash and the signed statement are recomputed from the
 raw content, not read off the document.
 
-| Option | Purpose |
-|---|---|
+| Option | Purpose | Default |
+|---|---|---|
 | `-g, --gateway <url>` | IPFS gateway to fetch from | `https://gateway.pinata.cloud` |
-| `--json` | machine-readable result |
+| `--json` | machine-readable result | off |
 
 Exits non-zero (and prints which check failed) if the hash doesn't match
 or the signature doesn't verify.
@@ -202,7 +216,7 @@ nirium config delete facilitatorApiKey
 
 Stores `secretKey`, `payTo`, `network`, and `facilitatorApiKey` in
 `~/.niriumrc.json` (mode `600`) so `pay`, `serve`, and `doctor` don't need
-them repeated on every invocation — command-line flags and environment
+them repeated on every invocation. Command-line flags and environment
 variables still take priority when present. `list` and `get` mask secret
 values in their output; the raw file is never printed.
 
@@ -211,7 +225,7 @@ values in their output; the raw file is never printed.
 | Option | Values | Default |
 |---|---|---|
 | `-n, --name <name>` | project directory name | `nirium-bot-v1` |
-| `-t, --template <template>` | `ts` or `py` — `bot` only | `ts` |
+| `-t, --template <template>` | `ts` or `py` (`bot` only) | `ts` |
 
 ## Links
 
@@ -221,4 +235,4 @@ values in their output; the raw file is never printed.
 
 ## License
 
-Apache 2.0 — Nirium Protocol
+Apache 2.0, Nirium Protocol

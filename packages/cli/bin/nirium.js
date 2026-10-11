@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // ═══════════════════════════════════════════════════════════════
-// Nirium — Autonomous Agent CLI (v2.0.0)
+// Nirium — Autonomous Agent CLI (v2.0.1)
 // ═══════════════════════════════════════════════════════════════
 //
 // Everything below is one flat file on purpose, not a build artifact:
@@ -40,7 +40,7 @@ const program = new Command();
 program
     .name('nirium')
     .description('Nirium protocol development tool')
-    .version('2.0.0');
+    .version('2.0.1');
 
 // --- COMMAND: create bot ---
 program
@@ -134,7 +134,7 @@ program
 // --- COMMAND: doctor ---
 program
     .command('doctor')
-    .description('CLI preflight diagnostics for x402/MPP misconfiguration, or a remote seller with --seller')
+    .description('CLI preflight diagnostics for x402 misconfiguration (the MPP check only validates config), or a remote seller with --seller')
     .option('-n, --network <network>', 'Stellar network: testnet or pubnet', 'testnet')
     .option('-c, --config <path>', 'Path to environment or config file')
     .option('--seller <url>', 'Validate a remote x402 seller at this URL without paying')
@@ -1372,7 +1372,7 @@ function formatDoctorOutput(report) {
     const lines = [];
     lines.push(report.seller
         ? `🩺 Nirium Doctor — remote x402 seller`
-        : `🩺 Nirium Doctor — x402/MPP Diagnostic Report`);
+        : `🩺 Nirium Doctor — x402 Diagnostic Report`);
     if (report.seller) lines.push(`Seller:         ${report.seller}`);
     lines.push(`Target Network: ${report.network || 'n/a'}`);
     lines.push(`Timestamp:      ${report.timestamp}`);

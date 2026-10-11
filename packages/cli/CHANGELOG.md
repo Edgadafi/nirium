@@ -4,6 +4,18 @@ All notable changes to the `nirium-cli` package are documented here.
 
 ## Unreleased
 
+## 2.0.1 - 2026-10-11
+
+Documentation only. No behavior changes.
+
+### Changed
+
+- README: the secret key section no longer suggests `nirium config set secretKey S...`, which is refused since 2.0.0. It lists the three safe ways instead.
+- README: `nirium status` is now documented, including that its default URL is `http://localhost:3001` and not the Nirium agent.
+- README and `nirium doctor` help text: the MPP check only validates configuration, and Nirium does not charge MPP payments on mainnet today.
+- README: the `x402Serve()` usage telemetry is off by default and only sent when `NIRIUM_X402SERVE_TELEMETRY=true` (as in `nirium` 0.16.0). The text said it was on by default.
+- README: fixed the `nirium verify` options table and removed long dashes.
+
 ## 2.0.0 - 2026-10-11
 
 Breaking: three ways of passing a secret on the command line are gone. A key typed as an argument stays in your shell history and shows up in `ps` for anyone on the machine. The safe ways to supply a key are the environment variable (`NIRIUM_SECRET_KEY`, `FACILITATOR_API_KEY`) or the hidden prompt.
