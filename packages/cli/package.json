@@ -8,6 +8,7 @@
     "nirium": "bin/nirium.js"
   },
   "scripts": {
+    "prepublishOnly": "node --check bin/nirium.js",
     "test": "node --test test/doctor-seller.test.js test/config-secret.test.js test/serve-api-key.test.js"
   },
   "keywords": [
