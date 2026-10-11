@@ -3,7 +3,7 @@
 // Copyright 2026 Nirium Protocol Contributors
 
 // ═══════════════════════════════════════════════════════════════
-// Nirium MCP Server v0.6.0 — x402 + MPP + node tool suite
+// Nirium MCP Server — x402 + MPP + node tool suite
 // ═══════════════════════════════════════════════════════════════
 //
 // Exposes Nirium Protocol capabilities to any MCP-compatible AI:
@@ -138,8 +138,12 @@ if (PAYMENTS_ENABLED) {
 
 // ─── Server ───────────────────────────────────────────────────
 
+// La versión se lee de package.json: antes estaba escrita a mano en tres lugares
+// y se quedaba atrás en cada release. dist/ queda un nivel debajo de package.json.
+const PKG_VERSION: string = require('../package.json').version;
+
 const server = new McpServer(
-    { name: 'nirium-mcp-server', version: '0.6.0' },
+    { name: 'nirium-mcp-server', version: PKG_VERSION },
     { capabilities: { tools: {} } },
 );
 
@@ -587,7 +591,7 @@ server.tool(
 async function main(): Promise<void> {
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    console.error('[Nirium MCP] v0.6.0 running on stdio');
+    console.error(`[Nirium MCP] v${PKG_VERSION} running on stdio`);
     console.error(`[Nirium MCP] Agent API: ${API_URL}`);
     console.error(`[Nirium MCP] NIRIUM_API_KEY set: ${!!NIRIUM_API_KEY}`);
     console.error(`[Nirium MCP] x402 enabled: ${!!STELLAR_KEY}`);
