@@ -2,6 +2,14 @@
 
 All notable changes to the `nirium-mcp` package are documented here.
 
+## 0.6.2 - 2026-10-11
+
+Replaces 0.6.1, which was published broken (see below). No code change beyond the version bump.
+
+### Fixed
+
+- 0.6.1 was published from a directory where `npm install` had failed (the preexisting `@stellar/stellar-sdk` peer conflict with `@stellar/mpp`) and `npm run build` never ran, so the tarball shipped without `dist/`. `nirium-mcp@0.6.1` is deprecated on npm; do not install it.
+
 ## 0.6.1 - 2026-10-11
 
 No new tools and no change to any tool. Package metadata and the reported version only.
