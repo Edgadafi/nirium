@@ -440,12 +440,27 @@ const SECRET_CONFIG_KEYS = {
 };
 
 // Hidden prompt on a terminal, stdin otherwise. Never a process argument.
-async function readSecretInput(question) {
+// `timeoutMs` (stdin only) resolves to '' when nothing finishes arriving in
+// time, so a caller that has no other source for the value can fail with its
+// own "missing key" error instead of waiting on a pipe that never closes.
+async function readSecretInput(question, { timeoutMs } = {}) {
     if (process.stdin.isTTY) return promptHiddenSecret(question);
-    const chunks = [];
-    for await (const chunk of process.stdin) chunks.push(chunk);
-    return Buffer.concat(chunks).toString('utf8').trim();
+    const read = (async () => {
+        const chunks = [];
+        for await (const chunk of process.stdin) chunks.push(chunk);
+        return Buffer.concat(chunks).toString('utf8').trim();
+    })();
+    if (!timeoutMs) return read;
+    let timer;
+    const timeout = new Promise((resolve) => { timer = setTimeout(() => resolve(''), timeoutMs); });
+    try {
+        return await Promise.race([read, timeout]);
+    } finally {
+        clearTimeout(timer);
+    }
 }
+
+const SERVE_STDIN_TIMEOUT_MS = Number(process.env.NIRIUM_STDIN_TIMEOUT_MS) || 10_000;
 
 async function executeConfigCommand(action, key, value) {
     const currentConfig = loadConfig();
@@ -678,7 +693,7 @@ async function executeServeCommand(options) {
         process.exit(1);
     }
     let facilitatorApiKey = process.env.FACILITATOR_API_KEY || config.facilitatorApiKey;
-    if (!facilitatorApiKey) facilitatorApiKey = await readSecretInput('Facilitator API key: ');
+    if (!facilitatorApiKey) facilitatorApiKey = await readSecretInput('Facilitator API key: ', { timeoutMs: SERVE_STDIN_TIMEOUT_MS });
 
     if (!facilitatorApiKey) {
         console.error('❌ Error: Missing facilitator API key.');

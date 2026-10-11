@@ -79,3 +79,23 @@ test('no key anywhere exits 1 with the missing-key message', async () => {
     assert.equal(r.listening, false);
     assert.match(r.stderr, /Missing facilitator API key/);
 });
+
+test('an open stdin that never closes times out and exits 1 with the missing-key error', async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'nirium-cli-home-'));
+    const env = { ...process.env, HOME: home, NIRIUM_STDIN_TIMEOUT_MS: '1500' };
+    delete env.FACILITATOR_API_KEY;
+    const started = Date.now();
+    const r = await new Promise((resolve) => {
+        const child = spawn(process.execPath, [cli, 'serve', '--pay-to', PAY_TO, '--port', '0'],
+            { env, stdio: ['pipe', 'pipe', 'pipe'] });
+        let stderr = '';
+        child.stderr.on('data', (d) => { stderr += d; });
+        // stdin is deliberately left open: nothing is written and it is never ended.
+        const guard = setTimeout(() => child.kill('SIGKILL'), 8000);
+        child.on('close', (code) => { clearTimeout(guard); resolve({ code, stderr }); });
+    });
+    const elapsed = Date.now() - started;
+    assert.equal(r.code, 1, `expected exit 1, got ${r.code}; stderr: ${r.stderr}`);
+    assert.match(r.stderr, /Missing facilitator API key/);
+    assert.ok(elapsed < 7000, `should give up around the timeout, took ${elapsed} ms`);
+});
