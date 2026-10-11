@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // ═══════════════════════════════════════════════════════════════
-// Nirium — Autonomous Agent CLI (v1.1.4)
+// Nirium — Autonomous Agent CLI (v2.0.0)
 // ═══════════════════════════════════════════════════════════════
 //
 // Everything below is one flat file on purpose, not a build artifact:
