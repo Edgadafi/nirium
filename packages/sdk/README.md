@@ -28,7 +28,7 @@ console.log('Agent alive:', alive);
 const market = await agent.getMarket();
 console.log('XLM Price:', market.xlmPrice);
 
-// Trigger a demo strategy on Nirium's own shared testnet vault — a real,
+// Trigger a demo strategy on Nirium's own shared testnet vault - a real,
 // working transaction, not a simulation, but it moves Nirium's testnet
 // funds, not yours. To rebalance YOUR OWN vault, see Treasury Rebalance below.
 const result = await agent.execute('blend-yield', 'USDC', { amount: 5000 });
@@ -82,7 +82,7 @@ const agent = new Agent({
 
 ## Payment Protocols
 
-### x402 — Pay-Per-Request
+### x402: Pay-Per-Request
 ```typescript
 agent.initX402({
   secretKey: 'S...',           // Stellar secret key
@@ -171,7 +171,7 @@ const response = await agent.mppFetch('https://your-mpp-server.example/resource'
 - In `push` mode the payment settles on-chain before the server verifies it, so a request the server rejects is **not refunded**.
 - Until this is diagnosed, use x402 (`initX402()`) for paid endpoints. The `get_mpp_*` tools of the MCP server have the same limitation.
 
-### x402Serve() — Charging Your Own API
+### x402Serve(): Charging Your Own API
 
 `initX402()` above lets you *pay* for someone else's API. This is the other side: charging for yours.
 
@@ -179,19 +179,77 @@ const response = await agent.mppFetch('https://your-mpp-server.example/resource'
 import { x402Serve } from 'nirium';
 
 app.use('/premium', x402Serve({
-  payTo: 'G...',                 // your Stellar address — where payments land
+  payTo: 'G...',                 // your Stellar address - where payments land
   routes: { 'GET /signals': '$0.02' },
   facilitatorApiKey: '...',      // required on mainnet; OpenZeppelin Channels by default
 }));
 ```
 
-Runs on **your own server**, not Nirium's — `x402Serve()` is a client-side function you call from your own code; Nirium doesn't operate, host, or route through anything here, is never in the payment path, and never sees your end users' requests.
+Runs on **your own server**, not Nirium's - `x402Serve()` is a client-side function you call from your own code; Nirium doesn't operate, host, or route through anything here, is never in the payment path, and never sees your end users' requests.
 
-**Known limitation:** `x402Serve()` verifies and settles the payment; it does not deduplicate a payment proof across requests or rate-limit callers on its own. Add your own protection if you need either - see [issue #91](https://github.com/nirium-protocol/nirium/issues/91) for what's missing, why, and a real production reference implementation.
+**Known limitation:** by default `x402Serve()` does not protect against replay and does not rate-limit callers. It is turned on by passing `guard` (see below).
 
-**Usage telemetry — opt-in, off by default:** set `NIRIUM_X402SERVE_TELEMETRY=true` to send a small, non-blocking usage ping to Nirium — your `payTo` address, a SHA-256 hash of your `facilitatorApiKey` (never the key itself), network, route/request counts, and this SDK's version. It never blocks, delays, or fails a payment if the ping fails, times out, or isn't sent at all. Disabled by default since v0.14.0 — it's the only channel that would otherwise connect Nirium to how a specific integrator is using this locally-run function, and that isn't a decision this package should make for you.
+#### Replay and rate-limit guard (optional)
 
-**Compliance is yours.** `x402Serve()` is a general-purpose library, not a service Nirium provides to your end users. You choose what to charge for, who your `payTo` is, and which jurisdiction you operate in — you remain solely responsible for complying with the financial, tax, and consumer-protection laws that apply to your own use of it.
+Without `guard`, `x402Serve()` verifies and settles the payment and does nothing else. It does not stop the same signed payment from being sent twice, and it does not limit how often one caller can hit a route. Pass `guard` to get both:
+
+- **Replay guard:** each payment proof can be used once per method and route (`replayTtlMs`, 15 minutes by default). A second use gets `409 payment_replayed`. If the request does not end in a 2xx, the claim is released, so a normal retry still works. If the store is down, the replay check refuses the request (`503`) instead of letting it through.
+- **Rate limit:** optional, per caller IP (`req.ip`; set Express `trust proxy` if you run behind a proxy). Past `max` requests in `windowMs` the caller gets `429 rate_limited` with a `Retry-After` header. If the store is down, rate limiting lets traffic through.
+
+The guard needs a store with three methods (`X402GuardStore`: `claimOnce`, `release`, `slidingWindowHit`). Two options:
+
+```typescript
+import { x402Serve, createUpstashX402GuardStore, type X402GuardStore } from 'nirium';
+
+// Option 1: Upstash (Redis over REST). Shared between several servers.
+const store = createUpstashX402GuardStore({
+  url: process.env.UPSTASH_REDIS_REST_URL!,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+});
+
+// Option 2: your own store. This one lives in memory, so it only works for a
+// single process. For more than one server, back the same three methods with a shared store.
+function createMemoryGuardStore(): X402GuardStore {
+  const claims = new Map<string, number>();                    // key -> expires at
+  const hits = new Map<string, { t: number; member: string }[]>();
+  return {
+    async claimOnce(key, ttlMs) {
+      const now = Date.now();
+      if ((claims.get(key) ?? 0) > now) return false;
+      claims.set(key, now + ttlMs);
+      return true;
+    },
+    async release(key) { claims.delete(key); },
+    async slidingWindowHit(key, windowMs, member) {
+      const now = Date.now();
+      const list = (hits.get(key) ?? []).filter((h) => h.t > now - windowMs);
+      list.push({ t: now, member });
+      hits.set(key, list);
+      return list.length;
+    },
+  };
+}
+
+app.use('/premium', x402Serve({
+  payTo: 'G...',
+  routes: { 'GET /signals': '$0.02' },
+  facilitatorApiKey: '...',
+  guard: {
+    store, // or createMemoryGuardStore()
+    rateLimit: { max: 60, windowMs: 60_000 }, // optional
+  },
+}));
+```
+
+No in-memory store ships with the package, and you do not need Upstash: any store that implements the three methods works. The design comes from a real production integration by Edgadafi ([Edgadafi/remesa-liquidez](https://github.com/Edgadafi/remesa-liquidez)); see [issue #91](https://github.com/nirium-protocol/nirium/issues/91). The code here is ours. Thanks, Edgadafi.
+
+**Usage telemetry - opt-in, off by default:** set `NIRIUM_X402SERVE_TELEMETRY=true` to send a small, non-blocking usage ping to Nirium - your `payTo` address, a SHA-256 hash of your `facilitatorApiKey` (never the key itself), network, route/request counts, and this SDK's version. It never blocks, delays, or fails a payment if the ping fails, times out, or isn't sent at all. Disabled by default since v0.14.0 - it's the only channel that would otherwise connect Nirium to how a specific integrator is using this locally-run function, and that isn't a decision this package should make for you.
+
+**Compliance is yours.** `x402Serve()` is a general-purpose library, not a service Nirium provides to your end users. You choose what to charge for, who your `payTo` is, and which jurisdiction you operate in - you remain solely responsible for complying with the financial, tax, and consumer-protection laws that apply to your own use of it.
+
+### Resilient WebSocket client
+
+`ResilientSignalClient` is a WebSocket client for `/ws/signals` that reconnects by itself with backoff, pings to detect dead connections, and drops duplicate signals. Create it with `{ url, token }`, call `connect()`, and listen with `onSignal()`, `onStatus()` and `onError()`; `close()` stops it.
 
 ### Endpoint Access Model
 
@@ -199,13 +257,13 @@ Runs on **your own server**, not Nirium's — `x402Serve()` is a client-side fun
 |---|---|
 | **Public** (no key) | `health`, `loop/status`, `execute-demo`, `signals/recent`, `skills` list |
 | **Protected** (API key) | `execute`, `market`, `loop/start\|stop\|scan`, `subscriptions`, `skills/install`, `webhooks` |
-| **WebSocket** (JWT) | `/ws/signals` — real-time signal stream |
-| **x402 Premium** | `/api/v1/premium/signals` ($0.02 USDC), `/api/v1/premium/market` ($0.05 USDC) |
+| **WebSocket** (JWT) | `/ws/signals` - real-time signal stream |
+| **x402 Premium** | `/api/v1/premium/signals` ($0.02 USDC), `/api/v1/premium/market` ($0.05 USDC). `/premium/signals` only exists on testnet: on mainnet it answers `501` (no signal source there) and does not charge. `/premium/market` is paid on both networks. |
 | **MPP Charge** | `/api/v1/mpp/signals`, `/api/v1/mpp/market` (testnet endpoint rejected MPP payments when tested, mainnet untested, see [MPP Charge](#mpp-charge-experimental)) |
 
-### x402 Metrics — Observability Wrapper
+### x402 Metrics: Observability Wrapper
 
-Wrap your `x402Serve` handler with `x402Metrics` to get Prometheus-format counters, histograms, and revenue tracking — no changes to your payment logic.
+Wrap your `x402Serve` handler with `x402Metrics` to get Prometheus-format counters, histograms, and revenue tracking - no changes to your payment logic.
 
 ```typescript
 import express from 'express';
@@ -273,7 +331,7 @@ x402_settlement_latency_seconds_sum{route="GET /signals"} 3.42
 x402_settlement_latency_seconds_count{route="GET /signals"} 8
 ```
 
-No payer addresses or PII are included in metrics output — aggregates only.
+No payer addresses or PII are included in metrics output - aggregates only.
 
 ## Payouts
 
@@ -282,7 +340,7 @@ Batch disbursement, non-custodial: the node builds an **unsigned** transaction, 
 ```typescript
 const run = await agent.createPayoutRun({
   recipients: [{ wallet: 'GABC...', amount: '250.00' }],
-  acknowledgeTerms: true,       // required on every network — 403 without it
+  acknowledgeTerms: true,       // required on every network - 403 without it
 });
 
 const signedXdr = await signWithYourWallet(run.xdr);
@@ -290,23 +348,23 @@ const settled = await agent.submitPayout(run.runId, signedXdr);
 console.log(settled.txHash, settled.cid);   // on-chain hash + IPFS receipt
 ```
 
-Licensed for **independent service payments only** — contractors, freelancers, B2B. Not for subordinate-employee salary. Read `getPayoutTerms()` before integrating; classifying recipients and meeting tax and labor obligations is the client's responsibility.
+Licensed for **independent service payments only** - contractors, freelancers, B2B. Not for subordinate-employee salary. Read `getPayoutTerms()` before integrating; classifying recipients and meeting tax and labor obligations is the client's responsibility.
 
 Mainnet is invite-only during early access and additionally requires `clientInfo`.
 
 ## Treasury Rebalance
 
-Two ways to rebalance a DeFindex vault between idle cash and an invested strategy. Neither is a swap — the contract's `rebalance()` exposes exactly two instructions, `Unwind` and `Invest`, and neither accepts a destination address, so withdrawing anywhere but back into the vault itself is not expressible.
+Two ways to rebalance a DeFindex vault between idle cash and an invested strategy. Neither is a swap - the contract's `rebalance()` exposes exactly two instructions, `Unwind` and `Invest`, and neither accepts a destination address, so withdrawing anywhere but back into the vault itself is not expressible.
 
-### Propose — you review and sign, available to everyone today
+### Propose: you review and sign, available to everyone today
 
-The agent decides what it would do, using the same decision logic as the autonomous signer below, but it never signs. Public, no allowlist, no invite required — works for any vault where you're already the on-chain rebalance manager.
+The agent decides what it would do, using the same decision logic as the autonomous signer below, but it never signs. Public, no allowlist, no invite required - works for any vault where you're already the on-chain rebalance manager.
 
 ```typescript
 const proposal = await agent.proposeTreasuryRebalance({
   vault: 'CABC...',
   caller: 'GABC...',   // must already be this vault's rebalanceManager on-chain
-  enterAt: 2.5,        // your own mandate — Nirium never supplies a default here
+  enterAt: 2.5,        // your own mandate - Nirium never supplies a default here
   exitAt: 2.0,
 });
 
@@ -318,13 +376,13 @@ if (proposal.instructions.length) {
 }
 ```
 
-### Autonomous — Nirium signs, invite-only during legal review
+### Autonomous: Nirium signs, invite-only during legal review
 
-`executeTreasuryRebalance()` has Nirium sign and submit with its own RebalanceManager key — full autonomy, no per-cycle approval. **This is invite-only while a specific legal question stays open**: whether executing on a client's behalf without taking custody still counts as regulated facilitation under Mexican law. It only runs against vaults explicitly allowlisted server-side; calling it against any other vault returns 403, and Nirium's mainnet infrastructure returns 501 for it entirely, since that box holds no signing key by design. Ask if you want autonomous execution today — otherwise, `proposeTreasuryRebalance()` above gives you the same decision-making with you as the one who signs.
+`executeTreasuryRebalance()` has Nirium sign and submit with its own RebalanceManager key - full autonomy, no per-cycle approval. **This is invite-only while a specific legal question stays open**: whether executing on a client's behalf without taking custody still counts as regulated facilitation under Mexican law. It only runs against vaults explicitly allowlisted server-side; calling it against any other vault returns 403, and Nirium's mainnet infrastructure returns 501 for it entirely, since that box holds no signing key by design. Ask if you want autonomous execution today - otherwise, `proposeTreasuryRebalance()` above gives you the same decision-making with you as the one who signs.
 
 ## Audit Trail
 
-Anchor evidence to IPFS and get back a CID — an integrity seal, not notarization.
+Anchor evidence to IPFS and get back a CID - an integrity seal, not notarization.
 
 ```typescript
 const anchor = await agent.anchorAuditRecord({
@@ -345,10 +403,8 @@ Anchor a **hash** rather than the data itself: IPFS content cannot be deleted, s
 
 - [Documentation](https://nirium.xyz/docs)
 - [Developer Sandbox](https://nirium.xyz/sandbox)
-- [API Reference](https://nirium.xyz/docs/api)
-- [MCP Server Integration](https://nirium.xyz/docs/mcp)
-- [GitHub](https://github.com/nirium-protocol/nirium-sdk)
+- [GitHub](https://github.com/nirium-protocol/nirium)
 
 ## License
 
-Apache 2.0 — Nirium Protocol
+Apache 2.0 - Nirium Protocol
