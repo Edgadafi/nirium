@@ -109,7 +109,15 @@ try {
 }
 ```
 
-The error carries `url`, `amount` (atomic units, the cheapest offer when the server lists several), `formattedAmount`, `asset`, `network` and `cap`, and `signerCalled` is always `false`: nothing was signed or sent. The cap is enforced by `@x402/core` and cannot be changed from `initX402()` yet. Other `spendControls` rejections (for example a non-default asset) still surface as the original error.
+The error carries `url`, `amount` (atomic units, the cheapest offer when the server lists several), `formattedAmount`, `asset`, `network` and `cap`, and `signerCalled` is always `false`: nothing was signed or sent. The cap is enforced by `@x402/core`. Other `spendControls` rejections (for example a non-default asset) still surface as the original error.
+
+To pay an API priced above $1, raise the cap explicitly with `maxAmountPerPayment` (a USD amount: `'$5'`, `'5'` or `5`; it applies to default assets such as USDC):
+
+```typescript
+agent.initX402({ secretKey: 'S...', network: 'stellar:pubnet', maxAmountPerPayment: '$5' });
+```
+
+Why the default stays at $1: an agent pays whatever a server's 402 asks for, without a human in the loop, so a low cap limits the damage from a mispriced or malicious endpoint. Raising it is a choice the integrator makes on purpose; omitting the option keeps `@x402/core`'s $1. It must be a positive amount, checked when `initX402()` runs; `false` (no cap) is not accepted. The option also applies when a `policy` is set, and a payment above the cap is refused before the policy or the signer is reached.
 
 #### Pre-sign policy hook (experimental)
 
