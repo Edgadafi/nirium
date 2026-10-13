@@ -19,7 +19,7 @@ setup(
         ],
     },
     author="Nirium Team",
-    description="Autonomous treasury and agentic-payments infrastructure for Stellar (x402 + MPP) — Python client",
+    description="Autonomous treasury and agentic-payments infrastructure for Stellar (x402) — Python client",
     keywords=["nirium", "stellar", "defi", "x402", "mpp", "agentic-payments", "soroban"],
     python_requires=">=3.10",
 )

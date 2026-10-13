@@ -299,7 +299,7 @@ server.tool(
 
 server.tool(
     'get_wallet_info',
-    'Show the x402 + MPP wallet address and payment configuration for this MCP session. Free.',
+    'Show the x402 (MPP experimental) wallet address and payment configuration for this MCP session. Free.',
     {},
     async () => text({
         address: STELLAR_PUBLIC_KEY || null,
@@ -365,7 +365,7 @@ server.tool(
 
 server.tool(
     'get_reporting_summary',
-    'Institutional-format summary of settled payouts, x402/MPP payment receipts and IPFS anchors for a period. '
+    'Institutional-format summary of settled payouts, x402 payment receipts and IPFS anchors for a period. '
     + 'Not certified regulatory reporting — filings remain the client\'s responsibility. Free.',
     {
         from: z.string().optional().describe('ISO start date, e.g. 2026-07-01 (defaults to last 30 days)'),

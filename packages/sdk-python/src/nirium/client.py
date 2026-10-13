@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════
-# Nirium Python SDK — Official Client (x402 + MPP)
+# Nirium Python SDK — Official Client: x402 (MPP experimental)
 # Versión: solo en pyproject.toml / setup.py / __init__.__version__ (no aquí:
 # un número en un comentario se desincroniza y ya mintió antes).
 # Synced with backend API (real Horizon data, Soroban execution)
@@ -417,7 +417,7 @@ class Agent:
         to_date: Optional[str] = None,
         network: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Institutional-format summary of payouts, x402/MPP receipts and anchors.
+        """Institutional-format summary of payouts, x402 receipts and anchors.
 
         Not certified regulatory reporting — what you file remains your responsibility.
         """

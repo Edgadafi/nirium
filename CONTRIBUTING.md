@@ -1,4 +1,4 @@
-# Contributing to nirium-sdk
+# Contributing to Nirium
 
 Thank you for your interest in contributing. This repository holds the open-source developer toolkit: the TypeScript SDK, the Python SDK, the CLI, the MCP server, examples, and docs. It does not contain the agent runtime or the Soroban contracts, which are maintained privately.
 
@@ -17,8 +17,8 @@ Thank you for your interest in contributing. This repository holds the open-sour
 ### Getting Started
 
 ```bash
-git clone https://github.com/nirium-protocol/nirium-sdk.git
-cd nirium-sdk
+git clone https://github.com/nirium-protocol/nirium.git
+cd nirium
 
 # TypeScript SDK / CLI / MCP server each have their own package.json
 cd packages/sdk && npm install && npm run build
@@ -41,7 +41,7 @@ cd packages/sdk-python && pip install -e .
 ## Repository Structure
 
 ```
-nirium-sdk/
+nirium/
 ├── packages/sdk/           → TypeScript SDK (npm: nirium)
 ├── packages/sdk-python/    → Python SDK (pip: nirium)
 ├── packages/mcp/           → MCP server (npm: nirium-mcp)
@@ -80,7 +80,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 ### AI Assistance Disclosure
 
-Every commit produced with AI assistance carries a `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>` trailer. This is a factual disclosure of how the commit was produced — it is never stripped to make a commit look human-authored, and never added where it doesn't apply to fake the opposite. If you use AI assistance in your own contributions, disclose it the same way.
+Every commit produced with AI assistance carries a `Co-Authored-By: <model> <noreply@anthropic.com>` trailer, where `<model>` is the model that actually produced that commit (for example `Claude Sonnet 5.5` or `Claude Opus 5.5`), never a fixed name. This is a factual disclosure of how the commit was produced — it is never stripped to make a commit look human-authored, and never added where it doesn't apply to fake the opposite. If you use AI assistance in your own contributions, disclose it the same way.
 
 ### Code Style
 

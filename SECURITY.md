@@ -52,7 +52,7 @@ The following components are in scope for security reports:
 
 The protocol is currently deployed on **Stellar Testnet only** and uses test tokens with no monetary value. A formal third-party audit is planned for Month 3 of operations (Soroban layer via SCF Audit Bank; API/server layer independently funded).
 
-**Internal security review (May 2026):** 83/83 vectors PASS, 0 critical, 0 high. This is a self-assessment, not a third-party certification. Full report: [INTERNAL_SECURITY_AUDIT.md](INTERNAL_SECURITY_AUDIT.md).
+**Internal security review (May 2026):** a self-assessment by the team, not a third-party audit or certification. **Update, 2026-10-12:** this line previously reported an aggregate score ("83/83 vectors PASS, 0 critical, 0 high"). A pass count from our own checklist is not an independent rating, so it is no longer shown. Full report: [INTERNAL_SECURITY_AUDIT.md](https://github.com/Eras256/Nirium/blob/main/INTERNAL_SECURITY_AUDIT.md).
 
 ### Security Measures Currently in Place
 
@@ -75,7 +75,7 @@ The protocol is currently deployed on **Stellar Testnet only** and uses test tok
 - Prototype pollution guard
 - HMAC-SHA256 webhook signature validation
 - Sliding-window rate limiting (60/30/300 rpm by tier)
-- AML screening + domain lock + response obfuscation middleware
+- domainLock and response obfuscation modules exist in the repo but are not mounted on any route. **Update, 2026-10-12 (checked against the agent codebase that day):** this line previously also listed "AML screening" as a live control. The AML middleware was never imported or mounted on any route and has been removed as dead code.
 
 **Infrastructure:**
 - Row Level Security (RLS) on all Supabase tables

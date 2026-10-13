@@ -2,6 +2,12 @@
 
 All notable changes to the `nirium-mcp` package are documented here.
 
+## Unreleased
+
+### Fixed
+
+- Descriptions (`package.json`, README, and the `get_reporting_summary` tool text) no longer say "x402/MPP" as if both were settling payments. No MPP payment has ever settled; the MPP tools are described as experimental. Not published yet: it ships with the next release.
+
 ## 0.6.3 - 2026-10-11
 
 ### Added

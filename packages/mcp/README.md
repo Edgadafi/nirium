@@ -1,6 +1,6 @@
 # nirium-mcp
 
-Model Context Protocol server for [Nirium](https://nirium.xyz) - exposes market data, autonomous treasury loop control, and x402/MPP paid endpoints to any MCP-compatible AI: Claude, GPT, Cursor, VS Code Copilot, and others.
+Model Context Protocol server for [Nirium](https://nirium.xyz) - exposes market data, autonomous treasury loop control, and x402 paid endpoints (MPP tools are experimental) to any MCP-compatible AI: Claude, GPT, Cursor, VS Code Copilot, and others.
 
 Software-only. This server never holds funds - paid tools sign per-request payments from a Stellar wallet you control via `STELLAR_SECRET_KEY`.
 
@@ -26,7 +26,7 @@ No install needed - run directly with `npx`, or add to your MCP client config.
 }
 ```
 
-`STELLAR_SECRET_KEY` and `NIRIUM_API_KEY` are optional - omit them and the free tools still work; paid (x402/MPP) and authenticated tools will tell you what's missing instead of failing silently.
+`STELLAR_SECRET_KEY` and `NIRIUM_API_KEY` are optional - omit them and the free tools still work; paid x402 (MPP experimental) and authenticated tools will tell you what's missing instead of failing silently.
 
 ## Tools
 
@@ -34,10 +34,10 @@ No install needed - run directly with `npx`, or add to your MCP client config.
 - `get_market_state` - XLM/USDC price, SDEX spread, base fee, Blend rate, CETES rate
 - `get_loop_status` - autonomous loop status, scan count, last AI decision
 - `execute_demo` - dry-run a strategy via real Soroban simulation, no funds moved
-- `get_wallet_info` - show the configured x402/MPP wallet and enabled tools
+- `get_wallet_info` - show the configured x402 (MPP experimental) wallet and enabled tools
 - `get_nodes` - list the execution nodes with live status, custody model and network
 - `anchor_audit_record` - anchor a hash (or a small JSON record) to IPFS, get back a CID
-- `get_reporting_summary` - settled payouts, x402/MPP receipts and anchors for a period
+- `get_reporting_summary` - settled payouts, x402 receipts and anchors for a period
 
 **Authenticated - requires `NIRIUM_API_KEY`**
 - `start_loop` - start the autonomous scanning loop

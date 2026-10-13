@@ -1,4 +1,4 @@
-"""Nirium — autonomous treasury and agentic-payments infrastructure for Stellar (x402 + MPP), Python client."""
+"""Nirium — autonomous treasury and agentic-payments infrastructure for Stellar, x402 (MPP experimental), Python client."""
 
 from typing import TYPE_CHECKING
 
